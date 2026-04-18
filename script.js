@@ -86,7 +86,7 @@ const portfolioProjects = [
         category: 'Web App (Security / Encryption)',
         title: 'stegocrypt',
         description: 'A Python-based web service for secure data hiding and cryptographic operations.',
-        link: 'https://stegocrypt-195h.onrender.com',
+        link: 'https://stegocrypt-eight.vercel.app',
         icon: '🔐',
         gradient: 'gradient-1',
         large: true
@@ -113,7 +113,7 @@ const portfolioProjects = [
         category: 'Static Website (Communication / Chat UI)',
         title: 'fluxchat',
         description: 'A minimal chat interface concept focused on clean UI and smooth interaction design.',
-        link: 'https://fluxchat-jlft.onrender.com',
+        link: 'https://fluxchat-three.vercel.app',
         icon: '💬',
         gradient: 'gradient-4',
         large: true
@@ -149,7 +149,7 @@ const portfolioProjects = [
         category:'FMCG Brand Website (Food / Beverage)',
         title:'Vyvora',
         description:'A vibrant and engaging website for a fictional food and beverage brand, showcasing products and brand story.',
-        link:'https://aquaflow-landing-page.onrender.com',
+        link:'https://aquaflow-landing-page.vercel.app',
         icon: '💧',
         gradient: 'gradient-3',
         large: true
