@@ -63,11 +63,25 @@ window.addEventListener('scroll', () => {
 // ===== Mobile Menu =====
 const mobileMenu = document.getElementById('mobileMenu');
 const navLinks = document.getElementById('navLinks');
+const mobileNavPanel = document.getElementById('mobileNavPanel');
 
 mobileMenu.addEventListener('click', () => {
     mobileMenu.classList.toggle('active');
     navLinks.classList.toggle('active');
+    if (mobileNavPanel) {
+        mobileNavPanel.classList.toggle('open');
+    }
 });
+
+// Close mobile nav when a link inside it is tapped
+if (mobileNavPanel) {
+    mobileNavPanel.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+            mobileMenu.classList.remove('active');
+            mobileNavPanel.classList.remove('open');
+        });
+    });
+}
 
 // ===== Smooth Scrolling =====
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -146,10 +160,10 @@ const portfolioProjects = [
         large: false
     },
     {
-        category:'FMCG Brand Website (Food / Beverage)',
-        title:'Vyvora',
-        description:'A vibrant and engaging website for a fictional food and beverage brand, showcasing products and brand story.',
-        link:'https://aquaflow-landing-page.vercel.app',
+        category: 'FMCG Brand Website (Food / Beverage)',
+        title: 'Vyvora',
+        description: 'A vibrant and engaging website for a fictional food and beverage brand, showcasing products and brand story.',
+        link: 'https://aquaflow-landing-page.vercel.app',
         icon: '💧',
         gradient: 'gradient-3',
         large: true
