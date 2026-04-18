@@ -53,6 +53,9 @@ button {
 
 /* ===== Custom Cursor ===== */
 .cursor {
+    --cursor-x: 0px;
+    --cursor-y: 0px;
+    --cursor-scale: 1;
     width: 12px;
     height: 12px;
     background: linear-gradient(135deg, var(--primary), var(--accent-pink));
@@ -62,9 +65,14 @@ button {
     z-index: 10001;
     mix-blend-mode: difference;
     transition: transform 0.1s ease;
+    transform: translate3d(var(--cursor-x), var(--cursor-y), 0) translate(-50%, -50%) scale(var(--cursor-scale));
+    will-change: transform;
 }
 
 .cursor-follower {
+    --cursor-x: 0px;
+    --cursor-y: 0px;
+    --cursor-scale: 1;
     width: 40px;
     height: 40px;
     border: 2px solid var(--primary);
@@ -74,6 +82,8 @@ button {
     z-index: 10000;
     transition: all 0.15s ease;
     opacity: 0.5;
+    transform: translate3d(var(--cursor-x), var(--cursor-y), 0) translate(-50%, -50%) scale(var(--cursor-scale));
+    will-change: transform;
 }
 
 /* ===== Background Animation ===== */
@@ -88,11 +98,13 @@ button {
 }
 
 .gradient-orb {
+    --parallax-y: 0px;
     position: absolute;
     border-radius: 50%;
     filter: blur(80px);
     opacity: 0.6;
     animation: float 20s infinite ease-in-out;
+    will-change: transform;
 }
 
 .orb-1 {
@@ -144,19 +156,19 @@ button {
 
     0%,
     100% {
-        transform: translate(0, 0) rotate(0deg) scale(1);
+        transform: translate3d(0, var(--parallax-y), 0) rotate(0deg) scale(1);
     }
 
     25% {
-        transform: translate(50px, -50px) rotate(90deg) scale(1.1);
+        transform: translate3d(50px, calc(-50px + var(--parallax-y)), 0) rotate(90deg) scale(1.1);
     }
 
     50% {
-        transform: translate(-30px, 30px) rotate(180deg) scale(0.9);
+        transform: translate3d(-30px, calc(30px + var(--parallax-y)), 0) rotate(180deg) scale(0.9);
     }
 
     75% {
-        transform: translate(-50px, -20px) rotate(270deg) scale(1.05);
+        transform: translate3d(-50px, calc(-20px + var(--parallax-y)), 0) rotate(270deg) scale(1.05);
     }
 }
 
@@ -230,6 +242,37 @@ button {
     background: var(--primary);
     border-radius: 50%;
     animation: particle-float 15s infinite linear;
+    will-change: transform, opacity;
+}
+
+.mouse-light-trail {
+    --trail-x: 0px;
+    --trail-y: 0px;
+    position: fixed;
+    width: 20px;
+    height: 20px;
+    background: radial-gradient(circle, rgba(102, 126, 234, 0.45), transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0;
+    transform: translate3d(var(--trail-x), var(--trail-y), 0) translate(-50%, -50%) scale(0.8);
+    will-change: transform, opacity;
+}
+
+.mouse-light-trail.active {
+    animation: light-trail-fade 0.85s ease forwards;
+}
+
+@keyframes light-trail-fade {
+    0% {
+        opacity: 0.9;
+        transform: translate3d(var(--trail-x, 0), var(--trail-y, 0), 0) translate(-50%, -50%) scale(0.9);
+    }
+    100% {
+        opacity: 0;
+        transform: translate3d(var(--trail-x, 0), var(--trail-y, 0), 0) translate(-50%, -50%) scale(2.5);
+    }
 }
 
 @keyframes particle-float {
@@ -3461,6 +3504,133 @@ button {
     75% {
         transform: rotate(-1deg) translateY(1px);
     }
+}
+
+/* ===== Adaptive Performance Layers ===== */
+body.touch-device {
+    cursor: auto;
+}
+
+body.touch-device a,
+body.touch-device button {
+    cursor: auto;
+}
+
+body.touch-device .cursor,
+body.touch-device .cursor-follower {
+    display: none;
+}
+
+body.compact-effects .gradient-orb {
+    filter: blur(68px);
+    opacity: 0.5;
+}
+
+body.compact-effects .light-flash {
+    animation-duration: 10s;
+    opacity: 0.7;
+}
+
+body.compact-effects .hero-glow {
+    filter: blur(48px);
+    opacity: 0.42;
+}
+
+body.compact-effects .cube-face,
+body.compact-effects .tech-icon {
+    backdrop-filter: blur(8px);
+}
+
+body.compact-effects .orbit-dot {
+    box-shadow: 0 0 14px currentColor, 0 0 28px currentColor;
+}
+
+body.compact-effects .conn-line {
+    opacity: 0.7;
+}
+
+body.compact-effects .wiggle-char {
+    animation-duration: 0.8s;
+}
+
+body.chromium-browser .cursor {
+    mix-blend-mode: normal;
+    opacity: 0.95;
+}
+
+body.chromium-browser .cursor-follower {
+    opacity: 0.4;
+}
+
+body.chromium-browser .gradient-orb {
+    filter: blur(58px);
+    opacity: 0.48;
+}
+
+body.chromium-browser .light-flash {
+    opacity: 0.55;
+    animation-duration: 10s;
+}
+
+body.chromium-browser .hero-glow {
+    filter: blur(42px);
+    opacity: 0.34;
+}
+
+body.chromium-browser .cube-face,
+body.chromium-browser .tech-icon,
+body.chromium-browser .navbar.scrolled,
+body.chromium-browser .nav-mobile-panel,
+body.chromium-browser .liquid-glass-modal {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+body.chromium-browser .gradient-text .wiggle-char {
+    filter: drop-shadow(0 3px 8px rgba(80, 120, 255, 0.28));
+}
+
+body.chromium-browser .rainbow-wave {
+    filter: blur(26px);
+    opacity: 0.42;
+}
+
+body.chromium-browser .liquid-blob {
+    filter: blur(40px);
+    opacity: 0.42;
+}
+
+body.chromium-browser .modal-spline-bg {
+    opacity: 0.75;
+}
+
+body.reduced-motion .gradient-orb,
+body.reduced-motion .light-flash,
+body.reduced-motion .particle,
+body.reduced-motion .cube-container,
+body.reduced-motion .cube,
+body.reduced-motion .orbit-ring,
+body.reduced-motion .tech-icon,
+body.reduced-motion .orb-core,
+body.reduced-motion .orb-pulse,
+body.reduced-motion .conn-line,
+body.reduced-motion .hero-glow,
+body.reduced-motion .badge-dot,
+body.reduced-motion .logo .dot,
+body.reduced-motion .wiggle-char,
+body.reduced-motion .mouse-light-trail.active {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+}
+
+body.reduced-motion .portfolio-item,
+body.reduced-motion .service-card,
+body.reduced-motion .process-step,
+body.reduced-motion .testimonial-card,
+body.reduced-motion .feature-item,
+body.reduced-motion .primary-btn,
+body.reduced-motion .cta-btn {
+    transition-duration: 0.15s !important;
 }
 
 /* ===== Cross-Browser Animation Safety Net =====

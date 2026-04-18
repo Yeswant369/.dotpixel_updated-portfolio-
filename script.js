@@ -1,25 +1,84 @@
 // ===== Custom Cursor =====
 const cursor = document.getElementById('cursor');
 const cursorFollower = document.getElementById('cursorFollower');
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const coarsePointerQuery = window.matchMedia('(pointer: coarse)');
+const userAgent = navigator.userAgent;
+const isChromiumBrowser = /Chrome|CriOS|Edg\//.test(userAgent) && !/OPR\//.test(userAgent);
+const performanceMode = {
+    reducedMotion: prefersReducedMotion.matches,
+    coarsePointer: coarsePointerQuery.matches,
+    compact: window.innerWidth <= 768
+};
+
+function syncPerformanceClasses() {
+    performanceMode.reducedMotion = prefersReducedMotion.matches;
+    performanceMode.coarsePointer = coarsePointerQuery.matches;
+    performanceMode.compact = window.innerWidth <= 768;
+
+    document.body.classList.toggle('reduced-motion', performanceMode.reducedMotion);
+    document.body.classList.toggle('touch-device', performanceMode.coarsePointer);
+    document.body.classList.toggle('compact-effects', performanceMode.compact || performanceMode.coarsePointer);
+    document.body.classList.toggle('chromium-browser', isChromiumBrowser);
+}
+
+syncPerformanceClasses();
 
 let mouseX = 0, mouseY = 0;
 let followerX = 0, followerY = 0;
+let cursorVisible = !performanceMode.coarsePointer;
+let followerAnimationFrame = null;
+let scrollTicking = false;
+let latestScrollY = window.pageYOffset;
+const gradientOrbs = Array.from(document.querySelectorAll('.gradient-orb'));
+const sections = Array.from(document.querySelectorAll('section[id]'));
+const navItems = document.querySelectorAll('.nav-link');
+
+function setCursorPosition(element, x, y) {
+    if (!element) return;
+    element.style.setProperty('--cursor-x', `${x}px`);
+    element.style.setProperty('--cursor-y', `${y}px`);
+}
 
 document.addEventListener('mousemove', (e) => {
+    if (!cursorVisible) return;
     mouseX = e.clientX;
     mouseY = e.clientY;
-    cursor.style.left = mouseX + 'px';
-    cursor.style.top = mouseY + 'px';
+    setCursorPosition(cursor, mouseX, mouseY);
 });
 
 function animateFollower() {
+    if (!cursorVisible || performanceMode.reducedMotion) {
+        followerAnimationFrame = null;
+        return;
+    }
     followerX += (mouseX - followerX) * 0.1;
     followerY += (mouseY - followerY) * 0.1;
-    cursorFollower.style.left = followerX + 'px';
-    cursorFollower.style.top = followerY + 'px';
-    requestAnimationFrame(animateFollower);
+    setCursorPosition(cursorFollower, followerX, followerY);
+    followerAnimationFrame = requestAnimationFrame(animateFollower);
 }
-animateFollower();
+
+if (cursorVisible && !performanceMode.reducedMotion && !followerAnimationFrame) {
+    animateFollower();
+}
+
+window.addEventListener('resize', () => {
+    syncPerformanceClasses();
+    cursorVisible = !performanceMode.coarsePointer;
+    if (cursorVisible && !performanceMode.reducedMotion && !followerAnimationFrame) {
+        animateFollower();
+    }
+});
+
+if (typeof prefersReducedMotion.addEventListener === 'function') {
+    prefersReducedMotion.addEventListener('change', () => {
+        syncPerformanceClasses();
+        cursorVisible = !performanceMode.coarsePointer;
+        if (cursorVisible && !performanceMode.reducedMotion && !followerAnimationFrame) {
+            animateFollower();
+        }
+    });
+}
 
 // Cursor hover effects
 function bindCursorHoverEffects() {
@@ -28,13 +87,15 @@ function bindCursorHoverEffects() {
         if (el.dataset.cursorBound === 'true') return;
 
         el.addEventListener('mouseenter', () => {
-            cursor.style.transform = 'scale(2)';
-            cursorFollower.style.transform = 'scale(1.5)';
+            if (!cursorVisible) return;
+            cursor.style.setProperty('--cursor-scale', '2');
+            cursorFollower.style.setProperty('--cursor-scale', '1.5');
             cursorFollower.style.borderColor = '#f093fb';
         });
         el.addEventListener('mouseleave', () => {
-            cursor.style.transform = 'scale(1)';
-            cursorFollower.style.transform = 'scale(1)';
+            if (!cursorVisible) return;
+            cursor.style.setProperty('--cursor-scale', '1');
+            cursorFollower.style.setProperty('--cursor-scale', '1');
             cursorFollower.style.borderColor = '#667eea';
         });
 
@@ -47,18 +108,6 @@ bindCursorHoverEffects();
 // ===== Navbar Scroll Effect =====
 const navbar = document.getElementById('navbar');
 let lastScroll = 0;
-
-window.addEventListener('scroll', () => {
-    const currentScroll = window.pageYOffset;
-
-    if (currentScroll > 50) {
-        navbar.classList.add('scrolled');
-    } else {
-        navbar.classList.remove('scrolled');
-    }
-
-    lastScroll = currentScroll;
-});
 
 // ===== Mobile Menu =====
 const mobileMenu = document.getElementById('mobileMenu');
@@ -198,15 +247,11 @@ function renderPortfolioProjects() {
 renderPortfolioProjects();
 
 // ===== Active Nav Link =====
-const sections = document.querySelectorAll('section[id]');
-const navItems = document.querySelectorAll('.nav-link');
-
-window.addEventListener('scroll', () => {
+function updateActiveSection(scrollY) {
     let current = '';
     sections.forEach(section => {
         const sectionTop = section.offsetTop;
-        const sectionHeight = section.clientHeight;
-        if (pageYOffset >= sectionTop - 200) {
+        if (scrollY >= sectionTop - 200) {
             current = section.getAttribute('id');
         }
     });
@@ -217,7 +262,7 @@ window.addEventListener('scroll', () => {
             item.classList.add('active');
         }
     });
-});
+}
 
 // ===== Animated Counter =====
 const stats = document.querySelectorAll('.stat-number');
@@ -251,28 +296,31 @@ function countUp() {
     }
 }
 
-window.addEventListener('scroll', countUp);
 countUp();
 
 // ===== Floating Particles =====
 const particlesContainer = document.getElementById('particles');
-const particleCount = 50;
+const particleCount = performanceMode.coarsePointer ? 12 : performanceMode.compact ? 24 : 36;
 
-for (let i = 0; i < particleCount; i++) {
-    const particle = document.createElement('div');
-    particle.className = 'particle';
-    particle.style.left = Math.random() * 100 + '%';
-    particle.style.animationDuration = (Math.random() * 10 + 10) + 's';
-    particle.style.animationDelay = (Math.random() * 10) + 's';
-    particle.style.opacity = Math.random() * 0.5 + 0.2;
-    particle.style.width = (Math.random() * 4 + 2) + 'px';
-    particle.style.height = particle.style.width;
+if (particlesContainer) {
+    const particleFragment = document.createDocumentFragment();
+    for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.animationDuration = (Math.random() * 10 + 10) + 's';
+        particle.style.animationDelay = (Math.random() * 10) + 's';
+        particle.style.opacity = Math.random() * 0.5 + 0.2;
+        particle.style.width = (Math.random() * 4 + 2) + 'px';
+        particle.style.height = particle.style.width;
 
-    const colors = ['#667eea', '#764ba2', '#f093fb', '#00d4ff', '#a855f7'];
-    particle.style.background = colors[Math.floor(Math.random() * colors.length)];
-    particle.style.boxShadow = `0 0 ${Math.random() * 10 + 5}px ${particle.style.background}`;
+        const colors = ['#667eea', '#764ba2', '#f093fb', '#00d4ff', '#a855f7'];
+        particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+        particle.style.boxShadow = `0 0 ${Math.random() * 10 + 5}px ${particle.style.background}`;
 
-    particlesContainer.appendChild(particle);
+        particleFragment.appendChild(particle);
+    }
+    particlesContainer.appendChild(particleFragment);
 }
 
 // ===== Scroll Reveal Animation =====
@@ -311,7 +359,12 @@ document.head.appendChild(style);
 const tiltCards = document.querySelectorAll('[data-tilt]');
 
 tiltCards.forEach(card => {
+    let tiltFrame = null;
+    let nextTiltX = 0;
+    let nextTiltY = 0;
+
     card.addEventListener('mousemove', (e) => {
+        if (performanceMode.coarsePointer || performanceMode.reducedMotion) return;
         const rect = card.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
@@ -319,13 +372,21 @@ tiltCards.forEach(card => {
         const centerX = rect.width / 2;
         const centerY = rect.height / 2;
 
-        const rotateX = (y - centerY) / 20;
-        const rotateY = (centerX - x) / 20;
+        nextTiltX = (y - centerY) / 24;
+        nextTiltY = (centerX - x) / 24;
 
-        card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+        if (tiltFrame) return;
+        tiltFrame = requestAnimationFrame(() => {
+            card.style.transform = `perspective(1000px) rotateX(${nextTiltX}deg) rotateY(${nextTiltY}deg) scale3d(1.02, 1.02, 1.02)`;
+            tiltFrame = null;
+        });
     });
 
     card.addEventListener('mouseleave', () => {
+        if (tiltFrame) {
+            cancelAnimationFrame(tiltFrame);
+            tiltFrame = null;
+        }
         card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) scale3d(1, 1, 1)';
     });
 });
@@ -414,26 +475,29 @@ contactForm.addEventListener('submit', (e) => {
 const magneticBtns = document.querySelectorAll('.primary-btn, .cta-btn');
 
 magneticBtns.forEach(btn => {
-    btn.addEventListener('mousemove', (e) => {
-        const rect = btn.getBoundingClientRect();
-        const x = e.clientX - rect.left - rect.width / 2;
-        const y = e.clientY - rect.top - rect.height / 2;
+    let magneticFrame = null;
+    let nextX = 0;
+    let nextY = 0;
 
-        btn.style.transform = `translate(${x * 0.2}px, ${y * 0.2}px)`;
+    btn.addEventListener('mousemove', (e) => {
+        if (performanceMode.coarsePointer || performanceMode.reducedMotion) return;
+        const rect = btn.getBoundingClientRect();
+        nextX = e.clientX - rect.left - rect.width / 2;
+        nextY = e.clientY - rect.top - rect.height / 2;
+
+        if (magneticFrame) return;
+        magneticFrame = requestAnimationFrame(() => {
+            btn.style.transform = `translate3d(${nextX * 0.16}px, ${nextY * 0.16}px, 0)`;
+            magneticFrame = null;
+        });
     });
 
     btn.addEventListener('mouseleave', () => {
+        if (magneticFrame) {
+            cancelAnimationFrame(magneticFrame);
+            magneticFrame = null;
+        }
         btn.style.transform = '';
-    });
-});
-
-// ===== Parallax Effect on Scroll =====
-window.addEventListener('scroll', () => {
-    const scrolled = window.pageYOffset;
-
-    document.querySelectorAll('.gradient-orb').forEach((orb, index) => {
-        const speed = 0.05 * (index + 1);
-        orb.style.transform = `translateY(${scrolled * speed}px)`;
     });
 });
 
@@ -511,49 +575,40 @@ scrambleStyle.textContent = `
 document.head.appendChild(scrambleStyle);
 
 // ===== Light Effect on Mouse Move =====
-let lightTrailTimeout;
+const lightTrailPoolSize = performanceMode.coarsePointer || isChromiumBrowser ? 0 : performanceMode.compact ? 4 : 6;
+const lightTrailPool = [];
+let nextLightTrailIndex = 0;
+let lastTrailTime = 0;
+const lightTrailInterval = performanceMode.compact ? 110 : 70;
+
+function createLightTrailPool() {
+    if (!lightTrailPoolSize) return;
+    for (let i = 0; i < lightTrailPoolSize; i++) {
+        const light = document.createElement('div');
+        light.className = 'mouse-light-trail';
+        light.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(light);
+        lightTrailPool.push(light);
+    }
+}
+
+createLightTrailPool();
 
 document.addEventListener('mousemove', (e) => {
-    clearTimeout(lightTrailTimeout);
+    if (!lightTrailPool.length || performanceMode.reducedMotion) return;
+    const now = performance.now();
+    if (now - lastTrailTime < lightTrailInterval) return;
+    lastTrailTime = now;
 
-    const light = document.createElement('div');
-    light.className = 'mouse-light-trail';
-    light.style.left = e.clientX + 'px';
-    light.style.top = e.clientY + 'px';
-    document.body.appendChild(light);
+    const light = lightTrailPool[nextLightTrailIndex];
+    nextLightTrailIndex = (nextLightTrailIndex + 1) % lightTrailPool.length;
 
-    setTimeout(() => {
-        light.remove();
-    }, 1000);
+    light.classList.remove('active');
+    void light.offsetWidth;
+    light.style.setProperty('--trail-x', `${e.clientX}px`);
+    light.style.setProperty('--trail-y', `${e.clientY}px`);
+    light.classList.add('active');
 });
-
-// Add light trail styles
-const lightTrailStyle = document.createElement('style');
-lightTrailStyle.textContent = `
-    .mouse-light-trail {
-        position: fixed;
-        width: 20px;
-        height: 20px;
-        background: radial-gradient(circle, rgba(102, 126, 234, 0.5), transparent 70%);
-        border-radius: 50%;
-        pointer-events: none;
-        z-index: 9999;
-        animation: light-trail-fade 1s ease forwards;
-        transform: translate(-50%, -50%);
-    }
-    
-    @keyframes light-trail-fade {
-        0% {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1);
-        }
-        100% {
-            opacity: 0;
-            transform: translate(-50%, -50%) scale(3);
-        }
-    }
-`;
-document.head.appendChild(lightTrailStyle);
 
 
 
@@ -583,6 +638,10 @@ window.addEventListener('load', () => {
             preloader.classList.add('fade-out');
 
             setTimeout(() => {
+                if (splineViewer) {
+                    splineViewer.removeAttribute('url');
+                }
+                preloader.remove();
                 document.body.classList.add('loaded');
 
                 // Animate hero content
@@ -729,10 +788,45 @@ function activateRainbowMode() {
     }, 10000);
 }
 
+function updateParallax(scrollY) {
+    if (performanceMode.reducedMotion) return;
+    const parallaxFactor = performanceMode.compact ? 0.6 : 1;
+    gradientOrbs.forEach((orb, index) => {
+        const speed = 0.05 * (index + 1) * parallaxFactor;
+        orb.style.setProperty('--parallax-y', `${scrollY * speed}px`);
+    });
+}
+
+function updateOnScroll() {
+    scrollTicking = false;
+    const scrollY = latestScrollY;
+
+    if (navbar) {
+        navbar.classList.toggle('scrolled', scrollY > 50);
+    }
+
+    updateActiveSection(scrollY);
+    updateParallax(scrollY);
+    countUp();
+    lastScroll = scrollY;
+}
+
+window.addEventListener('scroll', () => {
+    latestScrollY = window.pageYOffset;
+    if (!scrollTicking) {
+        scrollTicking = true;
+        requestAnimationFrame(updateOnScroll);
+    }
+}, { passive: true });
+
+updateOnScroll();
+
 // ===== Liquid Glass Contact Modal =====
 const contactModal = document.getElementById('contactModal');
 const modalCloseBtn = document.getElementById('modalClose');
 const getStartedBtns = document.querySelectorAll('.cta-btn, .nav-cta');
+const modalSplineViewer = contactModal ? contactModal.querySelector('.modal-spline-bg spline-viewer') : null;
+let modalSplineLoaded = false;
 
 // Open modal on "Get Started" button click
 getStartedBtns.forEach(btn => {
@@ -743,6 +837,14 @@ getStartedBtns.forEach(btn => {
 });
 
 function openContactModal() {
+    if (modalSplineViewer && !modalSplineLoaded) {
+        const splineUrl = modalSplineViewer.dataset.url;
+        if (splineUrl) {
+            modalSplineViewer.setAttribute('url', splineUrl);
+            modalSplineLoaded = true;
+        }
+    }
+
     contactModal.classList.add('active');
     document.body.style.overflow = 'hidden';
 
